@@ -1,17 +1,18 @@
 from flask import Flask, request, jsonify
 # import google.generativeai as genai
 import os
+from book import Book
+from books import Books
+
 
 app = Flask(__name__)
 
-# a list of JSON with fields ‘title’, ‘ISBN’, ‘genre’, 
-# ‘authors’, ‘publisher’, ‘publishedDate', 'language', 'summary'
-# and 'id'
-books = []
-
 # A dictionary of legal genres 
-genre_list = ["Fiction", "Children", "Biography", "Science",
-               "Science Fiction", "Fantasy", "Other"]
+GENRE_LIST = ["Fiction", "Children", "Biography", "Science",
+                "Science Fiction", "Fantasy", "Other"]
+
+# Books object
+books = Books()
 
 # a dict with key 'id',
 # 'id' is a JSON with 4 fields:
@@ -38,12 +39,8 @@ ratings = {}
 # It returns theresource /top (a JSON array).
 top = []
 
-# ID for books, using integer for incrementation, but used as string
-ID_COUNTER = 0
-
-
 # handeling post /books/{id}
-@app.post("/books/'{'id'}'")
+@app.post("/books/")
 def post_book():
     # The following fields are provided in the POST request:
     # ‘title’, ‘ISBN’, and ‘genre’
@@ -74,23 +71,29 @@ def post_book():
     
     if request.is_json:
         book = request.get_json()
+
+        # Checking inout info
         if not (book.get('title') and book.get('ISBN') and book.get('genre')):
             return {"error": "Missing fields - request should include title, ISBN and genre"}, 422
-        if not (book.get('genre') in genre_list):
+        if not (book.get('genre') in GENRE_LIST):
             return {"error": "Genre is not of legal type"}, 422
-        if (book.get('ISBN') in books):
+        if (book.get('ISBN') in books): # TBD - create books object in main
             return {"error": "Same ISBN already exists"}, 422
-        ID_COUNTER += 1
-        book['id'] = str(ID_COUNTER)
-        # book['authors'] = TBD Google Books API
-        # book['publisher'] = TBD Google Books API
-        # book['publishedDate'] = TBD Google Books API
-        # TBD - error handeling for google API (HTTP 500)
-        # book['language'] = TBD OpenLibrary API
-        # book['summary'] = TBD LLM (OpenAI / Google)
-        # TBD - error handeling for LLM API (HTTP 500)
-        # add_ratings(book.get('id'), 0) # TBD - def add_ratings(book_id, rating)     
-        return book.get('id'), 201
+        
+        # Input info check OK, adding the book to Books.
+        book_id = books.add_book(book.get('title'), book.get('ISBN'), book.get('genre'))
+
+        # Checking for errors using remote services
+        if (book_id == -1):
+            return {"error": "Unable to connect to Google Books"}, 500
+        if (book_id == -2):
+            return {"error": "Unable to connect to OpenLibrary"}, 500
+        if (book_id == -3):
+            return {"error": "Unable to connect to Gemini"}, 500
+        
+        # Adding to ratings 
+        # ratings.add_rating(book_id, 0) # TBD - def add_ratings(book_id, rating)     
+        return book_id, 201
     return {"error": "Request must be JSON"}, 415
     pass
 
@@ -147,7 +150,7 @@ def get_books():
         # Iterate over each book in the 'books' list
         for book in books:
             # Check if the specified field and value match
-            if all(book.get(field) == value for field, value in request.args.items()):
+            if all((book.get(field) == value) and field != ("summary" or "language") for field, value in request.args.items()):
                 filtered_books.append(book)
             # Check if 'language contains <value>' query parameter is present
             elif "language" in request.args and "contains" in request.args.get("language"):
@@ -188,3 +191,5 @@ def get_top():
     # returns the resource /top (a JSON array (use jsonify()).
     pass
 
+if __name__ == '__main__':
+    app.run
