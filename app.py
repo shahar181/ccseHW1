@@ -1,111 +1,143 @@
 from flask import Flask, request, jsonify
-from flask_restful import Api, reqparse, Resource
+import requests
 from booksCollection import BooksCollection
+from costomExeptions import *
 
 app = Flask(__name__)
-api = Api(app)
-
-# A dictionary of legal genres 
+books = BooksCollection()
 
 
-# booksCollection object
-booksCollection = BooksCollection()
+# POST /books to create a new book entry
+@app.route('/books', methods=['POST'])
+def add_book():
+    # Ensure that the request content type is JSON
+    if not request.is_json:
+        return jsonify({"error": "Unsupported media type, requires JSON"}), 415
 
-# Parser for creating a new book
-book_post_parser = reqparse.RequestParser()
-book_post_parser.add_argument('title', type=str, required=True, help="Title cannot be blank")
-book_post_parser.add_argument('ISBN', type=str, required=True, help="ISBN cannot be blank")
-book_post_parser.add_argument('genre', type=str, required=True, choices=booksCollection.GENRE_LIST,
-                              help="Invalid genre provided")
-
-# Parser for updating a book
-book_put_parser = reqparse.RequestParser()
-book_put_parser.add_argument('title', type=str, required=True)
-book_put_parser.add_argument('ISBN', type=str, required=True)
-book_put_parser.add_argument('genre', type=str, required=True, choices=booksCollection.GENRE_LIST)
-book_put_parser.add_argument('authors', type=str, required=True)
-book_put_parser.add_argument('publisher', type=str, required=True)
-book_put_parser.add_argument('publishedDate', type=str, required=True)
-book_put_parser.add_argument('languages', action='append', required=True)
-book_put_parser.add_argument('summary', type=str, required=True)
-
-# Parser for rating a book
-rating_post_parser = reqparse.RequestParser()
-rating_post_parser.add_argument('value', type=int, choices=[1, 2, 3, 4, 5], required=True, help="Invalid rating value")
+    data = request.get_json()
+    title = data.get('title')
+    isbn = data.get('isbn')
+    genre = data.get('genre')
+    try:
+        book_id = books.add_book(title, isbn, genre)
+        return jsonify({"id": book_id}), 201
+    except InvalidGenreError as e:
+        return jsonify(error=str(e)), 422
+    except MissingFieldsError as e:
+        return jsonify(error=str(e)), 422
+    except BookAlreadyExistsError as e:
+        return jsonify(error=str(e)), 422
+    except APIServiceError as e:
+        return jsonify(error=str(e)), 500
+    except NotFoundError as e:
+        return jsonify(error=str(e)), 500
 
 
-class Books(Resource):
-    def get(self):
-        return jsonify([book.get_json() for book in booksCollection.get_all_books()]), 200
+# GET /books to retrieve all books
+@app.route('/books', methods=['GET'])
+def get_all_books():
+    return jsonify([book.get_json() for book in books.get_all_books()])
 
-    def post(self):
-        if not request.is_json:
-            return {'error': 'Unsupported media type'}, 415
-        args = book_post_parser.parse_args()
-        if any(book['ISBN'] == args['ISBN'] for book in booksCollection.get_all_books()):
-            return {"error": "A book with the provided ISBN already exists."}, 422
+
+# GET /books/<id> to retrieve a specific book
+@app.route('/books/<book_id>', methods=['GET'])
+def get_book(book_id):
+    try:
+        book = books.get_book(book_id)
+        return jsonify(book), 200
+    except NotFoundError as e:
+        return jsonify(error=str(e)), 404
+
+
+# DELETE /books/<id> to delete a specific book
+@app.route('/books/<book_id>', methods=['DELETE'])
+def delete_book(book_id):
+    try:
+        books.delete_book(book_id)
+        return jsonify({"id": book_id}), 200
+    except NotFoundError as e:
+        return jsonify(error=str(e)), 404
+
+
+# PUT /books/<id> to update a specific book
+@app.route('/books/<book_id>', methods=['PUT'])
+def update_book(book_id):
+    # Check content type
+    if request.content_type != 'application/json':
+        return jsonify({"error": "Unsupported media type, requires JSON"}), 415
+
+    data = request.get_json()
+
+    # Validate input data
+    required_fields = ["title", "ISBN", "genre", "authors", "publisher", "publishedDate", "languages", "summary"]
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing one or more required fields"}), 422
+    try:
+        updated = books.update_book(book_id, **data)
+        if updated:
+            return jsonify({"id": book_id}), 200
+    except InvalidGenreError as e:
+        return jsonify(error=str(e)), 422
+    except NotFoundError as e:
+        return jsonify(error=str(e)), 404
+
+
+# GET /ratings to retrieve all ratings
+@app.route('/ratings', methods=['GET'])
+def get_all_ratings():
+    book_id = request.args.get('id')
+    if book_id:
+        # Fetch the rating for a specific book
         try:
-            book_id = booksCollection.add_book(args['title'], args['ISBN'], args['genre'])
-            if book_id == -1:
-                return {"error": "Provided genre is not accepted."}, 422
-            return {"id": book_id}, 201
-        except Exception as e:  # Assuming external calls to APIs might throw exceptions
-            return {"error": f"Unable to connect to external service: {str(e)}"}, 500
+            rating = books.get_rating(book_id)
+            return jsonify(rating), 200
+        except NotFoundError as e:
+            return jsonify(error=str(e)), 404
+    else:
+        #  list comprehension to create a list of dictionaries for JSON response
+        ratings_list = [{
+            'id': book_id,
+            'title': rating['title'],
+            'values': rating['values'],
+            'average': rating['average']
+        } for book_id, rating in books.ratings_list.items()]
+        return jsonify(ratings_list)
 
 
-class BookId(Resource):
-    def get(self, book_id):
-        book = booksCollection.get_book(book_id)
-        if book:
-            return book, 200
-        return {'error': 'Book not found'}, 404
-
-    def delete(self, book_id):
-        if booksCollection.delete_book(book_id):
-            return book_id, 200
-        return {'error': 'Book not found'}, 404
-
-    def put(self, book_id):
-        if not request.is_json:
-            return {'error': 'Unsupported media type, application/json required.'}, 415
-        if not booksCollection.get_book(book_id):
-            return {'error': 'Book not found'}, 404
-        args = book_put_parser.parse_args(strict=True)
-        if not booksCollection.update_book(book_id, **args):
-            return {'error': 'Unprocessable content, data validation failed'}, 422
-        return {'error': 'Book not found or invalid data'}, 422
+# GET /ratings/<book_id> to retrieve a specific rating
+@app.route('/ratings/<book_id>', methods=['GET'])
+def get_rating(book_id):
+    try:
+        rating = books.get_rating(book_id)
+        return jsonify(rating), 200
+    except NotFoundError as e:
+        return jsonify(error=str(e)), 404
 
 
-class RatingResource(Resource):
-    def get(self, book_id):
-        rating = booksCollection.get_rating(book_id)
-        if rating:
-            return rating
-        return {'error': 'Rating not found'}, 404
-
-    def post(self, book_id):
-        args = rating_post_parser.parse_args()
-        result = booksCollection.add_rating(book_id, args['value'])
-        if result == -1:
-            return {'error': 'Book not found'}, 404
-        elif result == -2:
-            return {'error': 'Invalid rating'}, 422
-        return {'average': result}, 200
+# GET /top to retrieve top-rated books
+@app.route('/top', methods=['GET'])
+def get_top_books():
+    return jsonify(books.get_top_ratings()), 200
 
 
-class TopbooksCollection(Resource):
-    def get(self):
-        return jsonify(booksCollection.get_top_ratings())
+# POST /ratings/<book_id>/values to add a new rating value
+@app.route('/ratings/<book_id>/values', methods=['POST'])
+def add_book_rating(book_id):
+    # Check content type
+    if request.content_type != 'application/json':
+        return jsonify({"error": "Unsupported media type, requires JSON"}), 415
 
-
-# Adding resources to API
-api.add_resource(Books, '/booksCollection')
-api.add_resource(BookId, '/booksCollection/<string:book_id>')
-api.add_resource(RatingResource, '/ratings/<string:book_id>', '/ratings/<string:book_id>/values')
-api.add_resource(TopbooksCollection, '/top')
+    data = request.get_json()
+    value = data.get('value')
+    if value:
+        try:
+            value = int(value)
+            new_average = books.add_rating(book_id, value)
+            return jsonify({"new average": new_average}), 201
+        except ValueError as e:
+            return jsonify(error=str(e)), 422
+        except NotFoundError as e:
+            return jsonify(error=str(e)), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
-if __name__ == '__main__':
-    app.run
+    app.run(debug=True, port=8000)
