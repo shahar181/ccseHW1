@@ -26,3 +26,8 @@ class NotFoundError(Error):
 class BookAlreadyExistsError(Error):
     """Raised when a book already exists in the collection"""
     pass
+
+
+class GoogleBooksAPINotFoundError(Error):
+    """Raised when an ISBN is not found in Google Books API"""
+    pass

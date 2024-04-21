@@ -12,14 +12,14 @@ class BooksCollection:
         self.ratings_list = {}
         self.top_ratings = []
 
-    # Function to add a new book to the collection
     def add_book(self, title, ISBN, genre):
+        """Add a new book to the collection."""
         if genre not in self.GENRE_LIST:
-            raise InvalidGenreError("error: Invalid genre")
+            raise InvalidGenreError("Invalid genre")
         elif not title or not ISBN or not genre:
-            raise MissingFieldsError("error: Missing required fields")
+            raise MissingFieldsError("Missing required fields")
         elif [book for book in self.collection.values() if book.ISBN == ISBN]:
-            raise BookAlreadyExistsError("error: Book already exists")
+            raise BookAlreadyExistsError("Book already exists")
         book_id = str(self._id_counter)
         new_book = Book(title, ISBN, genre, book_id)
         self._id_counter += 1  # Increment the ID counter for the next book
@@ -27,59 +27,59 @@ class BooksCollection:
         self.ratings_list[book_id] = {'values': [], 'average': 0.0, 'title': title, 'id': book_id}
         return book_id
 
-    # Function to delete a book from the collection
     def delete_book(self, book_id):
+        """Delete a book from the collection."""
         if book_id in self.collection:
             del self.collection[book_id]
             del self.ratings_list[book_id]
             self.update_top_ratings()
         else:
-            raise NotFoundError("error: Book not found")
+            raise NotFoundError("Book not found")
 
-    # Function to update an existing book in the collection
-    def update_book(self, book_id, title, ISBN, genre, authors, publisher, publishedDate, languages, summary):
+    def update_book(self, id, title, ISBN, genre, authors, publisher, publishedDate, languages, summary):
+        """Update an existing book in the collection."""
         if genre not in self.GENRE_LIST:
-            raise InvalidGenreError("error: Invalid genre")
-        elif book_id not in self.collection:
-            raise NotFoundError("error: Book not found")
+            raise InvalidGenreError("Invalid genre")
+        elif id not in self.collection:
+            raise NotFoundError("Book not found")
         else:
-            self.collection[book_id].title = title
-            self.collection[book_id].ISBN = ISBN
-            self.collection[book_id].genre = genre
-            self.collection[book_id].authors = authors
-            self.collection[book_id].publisher = publisher
-            self.collection[book_id].publishedDate = publishedDate
-            self.collection[book_id].languages = languages
-            self.collection[book_id].summary = summary
+            self.collection[id].title = title
+            self.collection[id].ISBN = ISBN
+            self.collection[id].genre = genre
+            self.collection[id].authors = authors
+            self.collection[id].publisher = publisher
+            self.collection[id].publishedDate = publishedDate
+            self.collection[id].languages = languages
+            self.collection[id].summary = summary
             return True
 
-    # Function to retrieve a specific book from the collection
     def get_book(self, book_id):
+        """Retrieve a specific book from the collection."""
         if book_id in self.collection:
             return self.collection[book_id].get_json()
         else:
-            raise NotFoundError("error: Book not found")
+            raise NotFoundError("Book not found")
 
-    # Function to retrieve all books from the collection
     def get_all_books(self):
+        """Retrieve all books from the collection."""
         # Serialize all books into an array
         books_list = [book for book in self.collection.values()]
         return books_list
 
-    # Function to retrieve a specific rating
     def get_rating(self, book_id):
+        """Retrieve the rating for a specific book."""
         if book_id in self.ratings_list:
             return self.ratings_list[book_id]
-        raise NotFoundError("error: Rating not found")
+        raise NotFoundError("Book not found")
 
-    # Function to retrieve all ratings
     def get_all_ratings(self):
+        """Retrieve all ratings from the collection."""
         return self.ratings_list
 
-    # Function to add a rating for a book
     def add_rating(self, book_id, value):
+        """Add a new rating value for a book."""
         if value not in {1, 2, 3, 4, 5}:
-           raise ValueError("error: Rating value must be between 1 and 5")
+            raise ValueError("Rating value must be between 1 and 5")
         if book_id in self.ratings_list:
             self.ratings_list[book_id]['values'].append(value)
             self.ratings_list[book_id]['average'] = round(
@@ -87,10 +87,10 @@ class BooksCollection:
             self.update_top_ratings()
             return self.ratings_list[book_id]['average']
         else:
-            raise NotFoundError("error: Book not found")
+            raise NotFoundError("Book not found")
 
-    # Function to update the top ratings
     def update_top_ratings(self):
+        """Update the top-rated books in the collection."""
         # Filter out books that have less than 3 ratings
         filtered_books = {book_id: ratings for book_id, ratings in self.ratings_list.items() if
                           len(ratings['values']) >= 3}
@@ -110,5 +110,6 @@ class BooksCollection:
 
     # Function to retrieve the top-rated books
     def get_top_ratings(self):
+        """Retrieve the top-rated books in the collection."""
         self.update_top_ratings()
         return self.top_ratings

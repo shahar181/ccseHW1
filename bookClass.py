@@ -1,10 +1,13 @@
 import json
 import requests
 from costomExeptions import *
-import openai
+from openai import OpenAI
 import os
 
-openai.api_key = os.getenv('sk-proj-qunxsyROD9bSsxFzi8nGT3BlbkFJxmkIKXLpAMRdShBWmZXh')
+client = OpenAI(
+    # defaults to os.environ.get("OPENAI_API_KEY")
+    api_key="sk-proj-qunxsyROD9bSsxFzi8nGT3BlbkFJxmkIKXLpAMRdShBWmZXh"
+)
 
 
 class Book:
@@ -22,15 +25,9 @@ class Book:
         self.fetch_details_from_apis()
 
     def fetch_details_from_apis(self):
-        # Fetch details from APIs
-        google_books_data = self.fetch_google_books()
-        if not google_books_data:
-            raise NotFoundError("error: ISBN not found in Google Books")
-
-        # Update book metadata with fetched details
-        self.authors = google_books_data.get("authors", "missing")
-        self.publisher = google_books_data.get("publisher", "missing")
-        self.publishedDate = google_books_data.get("publishedDate", "missing")
+        """Fetch book details from external APIs."""
+        # Fetch details from Google Books API
+        self.fetch_google_books()
         # Fetch languages from Open Library
         self.languages = self.fetch_book_languages()
         # Fetch summary using ChatGPT
@@ -38,41 +35,52 @@ class Book:
 
     # Function to fetch book details from Google Books API
     def fetch_google_books(self):
+        """Fetch book details from Google Books API."""
         try:
             google_books_url = f'https://www.googleapis.com/books/v1/volumes?q=isbn:{self.ISBN}'
             response = requests.get(google_books_url)
             if response.status_code != 200:
-                raise APIServiceError("error: Unable to connect to Google Books API")
+                raise APIServiceError("Unable to connect to Google Books API")
 
             if response.json()['totalItems'] == 0:
-                return None
+                self.authors = "missing"
+                self.publisher = "missing"
+                self.publishedDate = "missing"
+                return # No book data found
 
             book_data = response.json()['items'][0]['volumeInfo']
-            return {
-                "authors": " and ".join(book_data.get("authors", [])) if book_data.get("authors") else "missing",
-                "publisher": book_data.get("publisher", "missing"),
-                "publishedDate": book_data.get("publishedDate", "missing")
-            }
+            self.authors = " and ".join(book_data.get("authors", [])) if book_data.get("authors") else "missing"
+            self.publisher = book_data.get("publisher", "missing")
+            self.publishedDate = book_data.get("publishedDate", "missing")
         except requests.exceptions.RequestException as e:
             # Handle connection errors or timeout errors
-            raise APIServiceError(f"error: Unable to connect to Google Books API - {str(e)}")
+            raise APIServiceError(f"Unable to connect to Google Books API - {str(e)}")
 
     # Function to fetch book languages from Open Library API
     def fetch_book_languages(self):
+        """Fetch the languages the book is available in from Open Library."""
         try:
-            openlibrary_url = f'https://openlibrary.org/isbn/{self.ISBN}.json'
+            # Correct the URL to properly include the ISBN and fields query
+            openlibrary_url = f'https://openlibrary.org/search.json?isbn={self.ISBN}&fields=key,title,author_name,language'
             response = requests.get(openlibrary_url)
             if response.status_code != 200:
-                raise APIServiceError("error: Unable to connect to Open Library API")
+                raise APIServiceError("Unable to connect to Open Library API")
 
+            # Parse the JSON response
             data = response.json()
-            languages = [lang['key'].split('/')[-1] for lang in data.get('languages', [])]
-            return languages if languages else ["Unknown"]
+            if 'docs' in data and len(data['docs']) > 0:
+                # Extract languages from the first document in the docs array
+                languages = data['docs'][0].get('language', [])
+                # Transform each language code to just the language part (if necessary)
+                return [lang.split('/')[-1] for lang in languages]
+            else:
+                return ["Unknown"]  # Return ["Unknown"] if no language data is found
         except requests.exceptions.RequestException as e:
             # Handle connection errors or timeout errors
-            raise APIServiceError(f"error: Unable to connect to Open Library API - {str(e)}")
+            raise APIServiceError(f"Unable to connect to Open Library API - {str(e)}")
 
     def fetch_summary(self):
+        """Fetch a summary of the book using ChatGPT."""
         # Ensure required information is available
         if self.authors == "missing" or self.title == "missing":
             self.summary = "Summary unavailable due to missing book details."
@@ -81,12 +89,28 @@ class Book:
         prompt = f"Summarize the book '{self.title}' by {self.authors} in 5 sentences or less."
 
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-002",
-                prompt=prompt,
-                max_tokens=150
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a book summarization AI."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0
             )
-            # Extracting the summary from the response
-            self.summary = response.choices[0].text.strip()
+            self.summary = response.choices[0].message.content
         except Exception as e:
-            raise APIServiceError(f"error: Unable to connect to cha-gpt API - {str(e)}")
+            raise APIServiceError(f"Unable to connect to cha-gpt API - {str(e)}")
+
+    def get_json(self):
+        """Return the book data formatted as a JSON-compatible dictionary."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'ISBN': self.ISBN,
+            'genre': self.genre,
+            'authors': self.authors,
+            'publisher': self.publisher,
+            'publishedDate': self.publishedDate,
+            'languages': self.languages,
+            'summary': self.summary
+        }
