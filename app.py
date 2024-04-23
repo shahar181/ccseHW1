@@ -41,7 +41,19 @@ def add_book():
 # GET /books to retrieve all books
 @app.route('/books', methods=['GET'])
 def get_all_books():
-    return jsonify([book.get_json() for book in books.get_all_books()])
+    query_params = request.args
+    filtered_books = books.get_all_books()
+
+    for field, value in query_params.items():
+        if field == 'language contains':
+            # Special handling for 'language contains' query
+            filtered_books = [book for book in filtered_books if value in book.languages]
+        else:
+            # General field=value filtering
+            filtered_books = [book for book in filtered_books if book.field == value]
+
+    # Return the filtered list of books as JSON
+    return jsonify([book.get_json() for book in filtered_books])
 
 
 # GET /books/<id> to retrieve a specific book
@@ -78,7 +90,7 @@ def update_book(book_id):
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing one or more required fields"}), 422
     try:
-        updated = books.update_book(id=book_id, **data)
+        updated = books.update_book(book_id, **data)
         if updated:
             return jsonify({"id": book_id}), 200
     except InvalidGenreError as e:
@@ -128,7 +140,7 @@ def get_top_books():
         'values': rating['values'],
         'average': rating['average']
     } for book_id, rating in books.get_top_ratings()]
-    return jsonify({"top": ratings_list}), 200
+    return jsonify({"top":ratings_list} ), 200
 
 
 # POST /ratings/<book_id>/values to add a new rating value
