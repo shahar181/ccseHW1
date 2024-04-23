@@ -99,7 +99,7 @@ class Book:
             )
             self.summary = response.choices[0].message.content
         except Exception as e:
-            raise APIServiceError(f"Unable to connect to cha-gpt API - {str(e)}")
+            raise APIServiceError(f"Unable to connect to chat-gpt API - {str(e)}")
 
     def get_json(self):
         """Return the book data formatted as a JSON-compatible dictionary."""
