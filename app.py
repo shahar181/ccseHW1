@@ -41,16 +41,19 @@ def add_book():
 # GET /books to retrieve all books
 @app.route('/books', methods=['GET'])
 def get_all_books():
+    # For args without "language contains <value>" case
     query_params = request.args
+    # For args with "language contains <value>" case
+    query = request.query_string.decode()
     filtered_books = books.get_all_books()
 
-    for field, value in query_params.items():
-        if 'language contains' in field:
-            # Special handling for 'language contains' query
-            # Get the language code from the field
-            lang = field.split(' ')[2]
-            filtered_books = [book for book in filtered_books if lang in book.languages]
-        else:
+    if 'language%20contains' in query:
+        # Extracting the language code after 'language contains'
+        lang = query.split('language%20contains%20')[1]
+        filtered_books = [book for book in filtered_books if lang in book.languages]
+
+    else: 
+        for field, value in query_params.items():   
             # General field=value filtering
             filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]
 
