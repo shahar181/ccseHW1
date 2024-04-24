@@ -45,12 +45,14 @@ def get_all_books():
     filtered_books = books.get_all_books()
 
     for field, value in query_params.items():
-        if field == 'language contains':
+        if 'language contains' in field:
             # Special handling for 'language contains' query
-            filtered_books = [book for book in filtered_books if value in book.languages]
+            # Get the language code from the field
+            lang = field.split(' ')[2]
+            filtered_books = [book for book in filtered_books if lang in book.languages]
         else:
             # General field=value filtering
-            filtered_books = [book for book in filtered_books if book.field == value]
+            filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]
 
     # Return the filtered list of books as JSON
     return jsonify([book.get_json() for book in filtered_books])
