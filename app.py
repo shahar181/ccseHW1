@@ -43,19 +43,26 @@ def add_book():
 def get_all_books():
     # For args without "language contains <value>" case
     query_params = request.args
-    # For args with "language contains <value>" case
-    query = request.query_string.decode()
+    # Set of allowed languages
+    allowed_languages = {"heb", "eng", "spa", "chi"}
     filtered_books = books.get_all_books()
 
-    if 'language%20contains' in query:
-        # Extracting the language code after 'language contains'
-        lang = query.split('language%20contains%20')[1]
-        filtered_books = [book for book in filtered_books if lang in book.languages]
+    # If a query exists - otherwise return all books
+    if query_params:
+        # Iterate over the list
+        for field, value in query_params.items():
+            if field == "language":
+                # Validate the language parameter
+                if value not in allowed_languages:
+                    return jsonify({"error": "Unsupported language for query"}), 422
+                filtered_books = [book for book in filtered_books if value in book.languages] 
+                # If no books found with the specified language, but the language is allowed
+                if not filtered_books:
+                    return jsonify({"error": "No Matching book"}), 404
 
-    else: 
-        for field, value in query_params.items():   
-            # General field=value filtering
-            filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]
+            else:
+                # General field=value filtering
+                filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]  
 
     # Return the filtered list of books as JSON
     return jsonify([book.get_json() for book in filtered_books])
