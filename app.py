@@ -144,7 +144,7 @@ def get_rating(book_id):
 
 
 # GET /top to retrieve top-rated books
-@app.route('/ratings/top', methods=['GET'])
+@app.route('/top', methods=['GET'])
 def get_top_books():
     ratings_list = [{
         'id': book_id,
