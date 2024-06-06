@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from loans_collection import loans_collection
+import requests
 from costumeExeptions_loans import *
 import logging
+import re
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -32,8 +34,20 @@ def add_loan():
         if member_loans == 2:
            return jsonify({"error": "This member has more than two books"}), 422 
     
-    # Check 
+    # Check if book exist in /books
+    # TODO: verify the internal port in books
+    books_service_url = f'http://books:5000/books?isbn={self.ISBN}'
+    response = requests.get(books_service_url)
+    if response.status_code != 200:
+        raise APIServiceError("Unable to connect to /books API")
+    if not response.json():
+        raise BookNotInBooksError("Books is not in /books")
 
+    # Check if date is formatted correctly
+    # Define the regex pattern for the 'YYYY-MM-DD' format
+    date_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+    if not date_pattern.match(loanDate):
+        return jsonify({"error": "Date not in format"}), 422
 
     try:
         loanID, title, bookID = loans.add_loan(memberName, isbn, loanDate)
