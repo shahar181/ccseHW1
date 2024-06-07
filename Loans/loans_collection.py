@@ -5,6 +5,7 @@ import requests
 from pymongo import MongoClient
 from bson import json_util, ObjectId
 import os
+import json
 
 class loans_collection:
 
@@ -54,7 +55,7 @@ class loans_collection:
             raise InvalidLoanIdException("Invalid loan ID format")
         
         # Retrieve the loan document
-        loan_document = loans_collection.find_one({"_id": loan_object_id}
+        loan_document = loans_collection.find_one({"_id": loan_object_id})
         
         if loan_document:
             # Convert the _id to a string
