@@ -6,6 +6,9 @@ class MissingFieldsError(Error):
     """Raised when a required field is missing"""
     pass
 
+class InvalidLoanIdException(Error):
+    """Raised when an invalid loan id is used"""
+    pass
 
 class APIServiceError(Error):
     """Raised when there's a problem with an external API service"""

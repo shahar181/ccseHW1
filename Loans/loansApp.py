@@ -4,12 +4,28 @@ import requests
 from costumeExeptions_loans import *
 import logging
 import re
+from pymongo import MongoClient
+from bson import json_util, ObjectIdt
+import os
 
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 loans = loans_collection()
 
+# Get MongoDB URI from environment variable
+mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+
+# Connect to MongoDB
+client = MongoClient(mongo_uri)
+
+# Accessing the loans and books databases
+loans_db = client['loans_db']
+books_db = client['books_db']
+
+# Access collections
+loans_collection_db = loans_db['loans']
+books_collection_db = books_db['books']
 
 # POST /loans to create a new book loan
 @app.route('/loans', methods=['POST'])
@@ -45,25 +61,23 @@ def add_loan():
     
     # Check if book exist in /books
     try:
-        # TODO: verify the internal port in books
-        books_service_url = f'http://books:5000/books?isbn={isbn}'
-        response = requests.get(books_service_url)
-        
-        if response.status_code != 200:
-            raise APIServiceError("Unable to connect to /books API")
-        
+        # # TODO: verify the internal port in books
+        # books_service_url = f'http://books:5000/books?isbn={isbn}'
+        # response = requests.get(books_service_url)
 
-        if not response.json():
+        # Query the collection for the document with the specified ISBN
+        book_document = books_collection_db.find_one({"ISBN": isbn})
+
+        if book_document is None:
             raise BookNotInBooksError("Books is not in /books")
         
         # Retrieving bookid and title from books API
-        book_details = response.json()
-        book_id = book_details["id"]
-        title = book_details["title"]
+        book_id = str(book_document['_id'])
+        title = book_document["title"]
 
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         # Handle connection errors or timeout errors
-        raise APIServiceError(f"Unable to connect to /books API - {str(e)}")
+        raise APIServiceError(f"Unable to connect to /books collection - {str(e)}")
 
 
     try:
@@ -105,6 +119,10 @@ def get_loan(loanID):
     try:
         loan = loans.get_loan(loanID)
         return jsonify(loan), 200
+    
+    except InvalidLoanIdException as e:
+        return jsonify({"error": str(e)}), 400
+
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
 

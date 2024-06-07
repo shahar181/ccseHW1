@@ -1,0 +1,36 @@
+from flask import Flask, request, jsonify
+from pymongo import MongoClient
+import os
+
+app = Flask(__name__)
+
+# Get MongoDB URI from environment variable
+mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+
+# Connect to MongoDB
+client = MongoClient(mongo_uri)
+
+# Accessing the books and ratings databases
+books_db = client['books_db']
+ratings_db = client['ratings_db']
+
+# Access collections
+books_collection = books_db['books']
+ratings_collection = ratings_db['ratings']
+
+@app.route('/add_book', methods=['POST'])
+def add_book():
+    book_data = request.json
+    result = books_collection.insert_one(book_data)
+    book_id = str(result.inserted_id)
+    return jsonify({"message": "Book added", "book_id": book_id}), 201
+
+@app.route('/add_rating', methods=['POST'])
+def add_rating():
+    rating_data = request.json
+    result = ratings_collection.insert_one(rating_data)
+    rating_id = str(result.inserted_id)
+    return jsonify({"message": "Rating added", "rating_id": rating_id}), 201
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
