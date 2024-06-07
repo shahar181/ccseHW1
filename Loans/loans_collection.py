@@ -8,58 +8,38 @@ class loans_collection:
     def __init__(self):
         self.collection = {}
 
-    def add_loan(self, memberName, ISBN, loanDate):
+    def add_loan(self, book_id, title, memberName, ISBN, loanDate):
         """Add a new loan to the collection."""
         # Validating arguments
         if not memberName or not ISBN or not loanDate:
             raise MissingFieldsError("Missing required fields")
 
         loanID = str(self._id_counter)
-        new_loan = Loan(ISBN, memberName, loanID,loanDate)
+        new_loan = Loan(book_id, title, memberName, ISBN, loanDate, loanID)
         self._id_counter += 1  # Increment the ID counter for the next book
         self.collection[loanID] = new_loan
-        loan_details = self.collection[loanID].get_json()
-        title = loan_details["title"]
-        bookID = loan_details["bookID"]
-        return loanID, title, bookID
 
-    def delete_loan(self, book_id):
-        """Delete a book from the collection."""
-        if book_id in self.collection:
-            del self.collection[book_id]
-            del self.ratings_list[book_id]
-            self.update_top_ratings()
-        else:
-            raise NotFoundError("Book not found")
+        return loanID
 
-    def update_loan(self, id, title, ISBN, genre, authors, publisher, publishedDate, languages, summary):
-        """Update an existing book in the collection."""
-        if genre not in self.GENRE_LIST:
-            raise InvalidGenreError("Invalid genre")
-        elif id not in self.collection:
-            raise NotFoundError("Book not found")
+    def delete_loan(self, loanID):
+        """Delete a loan from the collection."""
+        if loanID in self.collection:
+            del self.collection[loanID]
         else:
-            self.collection[id].title = title
-            self.collection[id].ISBN = ISBN
-            self.collection[id].genre = genre
-            self.collection[id].authors = authors
-            self.collection[id].publisher = publisher
-            self.collection[id].publishedDate = publishedDate
-            self.collection[id].languages = languages
-            self.collection[id].summary = summary
-            return True
+            raise NotFoundError("Loan not found")
 
-    def get_loan(self, book_id):
-        """Retrieve a specific book from the collection."""
-        if book_id in self.collection:
-            return self.collection[book_id].get_json()
+
+    def get_loan(self, loanID):
+        """Retrieve a specific loan from the collection."""
+        if loanID in self.collection:
+            return self.collection[loanID].get_json()
         else:
-            raise NotFoundError("Book not found")
+            raise NotFoundError("Loan not found")
 
     def get_all_loans(self):
-        """Retrieve all books from the collection."""
-        # Serialize all books into an array
-        books_list = [book for book in self.collection.values()]
-        return books_list
+        """Retrieve all loans from the collection."""
+        # Serialize all loans into an array
+        loans_list = [loan for loan in self.collection.values()]
+        return loans_list
 
 

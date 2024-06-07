@@ -34,30 +34,48 @@ def add_loan():
         if member_loans == 2:
            return jsonify({"error": "This member has more than two books"}), 422 
     
-    # Check if book exist in /books
-    # TODO: verify the internal port in books
-    books_service_url = f'http://books:5000/books?isbn={self.ISBN}'
-    response = requests.get(books_service_url)
-    if response.status_code != 200:
-        raise APIServiceError("Unable to connect to /books API")
-    if not response.json():
-        raise BookNotInBooksError("Books is not in /books")
-
     # Check if date is formatted correctly
     # Define the regex pattern for the 'YYYY-MM-DD' format
     date_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}$')
     if not date_pattern.match(loanDate):
         return jsonify({"error": "Date not in format"}), 422
+    
+    # Check if book exist in /books
+    try:
+        # TODO: verify the internal port in books
+        books_service_url = f'http://books:5000/books?isbn={self.ISBN}'
+        response = requests.get(books_service_url)
+        
+        if response.status_code != 200:
+            raise APIServiceError("Unable to connect to /books API")
+        
+
+        if not response.json():
+            raise BookNotInBooksError("Books is not in /books")
+        
+        # Retrieving bookid and title from books API
+        book_details = response.json()
+        book_id = book_details["id"]
+        title = book_details["title"]
+
+    except requests.exceptions.RequestException as e:
+        # Handle connection errors or timeout errors
+        raise APIServiceError(f"Unable to connect to /books API - {str(e)}")
+
 
     try:
-        loanID, title, bookID = loans.add_loan(memberName, isbn, loanDate)
-        return jsonify({"id": loanID}), 201
+        loanID = loans.add_loan(book_id, title, memberName, isbn, loanDate)
+        return jsonify({"loanID": loanID}), 201
+    
     except BookNotInBooksError as e:
         return jsonify({"error": str(e)}), 422
+    
     except MissingFieldsError as e:
         return jsonify({"error": str(e)}), 422
+    
     except APIServiceError as e:
         return jsonify({"error": str(e)}), 500
+    
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -75,7 +93,7 @@ def get_all_loans():
             filtered_loans = [loan for loan in filtered_loans if getattr(loan, field, None) == value]
 
     # Return the filtered list of loans as JSON
-    return jsonify([book.get_json() for loan in filtered_loans])
+    return jsonify([loan.get_json() for loan in filtered_loans])
 
 
 # GET /loans/<loanID> to retrieve a specific loan
