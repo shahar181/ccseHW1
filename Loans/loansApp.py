@@ -43,7 +43,7 @@ def add_loan():
     # Check if book exist in /books
     try:
         # TODO: verify the internal port in books
-        books_service_url = f'http://books:5000/books?isbn={self.ISBN}'
+        books_service_url = f'http://books:5000/books?isbn={isbn}'
         response = requests.get(books_service_url)
         
         if response.status_code != 200:
