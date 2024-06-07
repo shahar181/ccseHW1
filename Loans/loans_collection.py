@@ -66,8 +66,13 @@ class loans_collection:
 
     def get_all_loans(self):
         """Retrieve all loans from the collection."""
-        # Serialize all loans into an array
+        # Serialize all loans into a list of jsons
         loans_list = list(self.loans_collection_db.find())
+
+        # Convert the _id field from ObjectId to string for each document
+        for loan in loans_list:
+            loan['_id'] = str(loan['_id'])        
+
         return json_util.dumps(loans_list)
 
 

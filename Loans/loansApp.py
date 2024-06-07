@@ -5,7 +5,7 @@ from costumeExeptions_loans import *
 import logging
 import re
 from pymongo import MongoClient
-from bson import json_util, ObjectIdt
+from bson import json_util, ObjectId
 import os
 
 logging.basicConfig(level=logging.DEBUG)
@@ -101,6 +101,7 @@ def add_loan():
 @app.route('/loans', methods=['GET'])
 def get_all_loans():
     query_params = request.args
+    # Getting all the the loans as a list of jsons
     filtered_loans = loans.get_all_loans()
 
     # If a query exists - otherwise return all loans
@@ -110,7 +111,7 @@ def get_all_loans():
             filtered_loans = [loan for loan in filtered_loans if getattr(loan, field, None) == value]
 
     # Return the filtered list of loans as JSON
-    return jsonify([loan.get_json() for loan in filtered_loans])
+    return filtered_loans
 
 
 # GET /loans/<loanID> to retrieve a specific loan
