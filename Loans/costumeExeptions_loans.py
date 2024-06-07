@@ -2,8 +2,6 @@ class Error(Exception):
     """Base class for other exceptions"""
     pass
 
-
-
 class MissingFieldsError(Error):
     """Raised when a required field is missing"""
     pass

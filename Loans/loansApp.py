@@ -26,6 +26,9 @@ def add_loan():
     isbn = data.get('ISBN')
     loanDate = data.get('loanDate')
 
+    if (memberName is None) or (isbn is None) or (loanDate is None):
+        raise MissingFieldsError("Missing required fields")
+
     # Checking loans per member limit
     member_loans = 0
     for loan in loans.get_all_loans:
