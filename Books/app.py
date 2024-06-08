@@ -49,7 +49,7 @@ def get_all_books():
     # If a query exists - otherwise return all books
     if query_params:
         for field, value in query_params.items():
-            filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]
+            filtered_books = [book for book in filtered_books if book.get(field) == value]
 
     # Return the filtered list of books as JSON
     return jsonify(filtered_books)
