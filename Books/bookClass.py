@@ -111,6 +111,4 @@ class Book:
             'authors': self.authors,
             'publisher': self.publisher,
             'publishedDate': self.publishedDate,
-            'languages': self.languages,
-            'summary': self.summary
         }

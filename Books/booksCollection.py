@@ -71,8 +71,13 @@ class BooksCollection:
     def get_all_books(self):
         """Retrieve all books from the collection."""
         # Serialize all books into an array
-        books = list(self.books_collection.find())
-        return books
+        books = self.books_collection.find()
+        books_list = []
+        for book in books:
+            book["id"] = str(book["_id"])
+            del book["_id"]
+            books_list.append(book)
+        return books_list
 
     def get_rating(self, book_id):
         """Retrieve the rating for a specific book."""

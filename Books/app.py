@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, request, jsonify
 from booksCollection import BooksCollection
 from costomExeptions import *
@@ -175,7 +177,7 @@ def add_book_rating(book_id):
             return jsonify({"error": str(e)}), 422
         except NotFoundError as e:
             return jsonify({"error": str(e)}), 404
-
-
+# Get the port number from the environment variable, default to 5001
+port = int(os.getenv('PORT', 5001))
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True)
