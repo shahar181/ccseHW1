@@ -36,7 +36,7 @@ class BooksCollection:
         else:
             raise NotFoundError("Book not found")
 
-    def update_book(self, id, title, ISBN, genre, authors, publisher, publishedDate, languages, summary):
+    def update_book(self, id, title, ISBN, genre, authors, publisher, publishedDate):
         """Update an existing book in the collection."""
         if genre not in self.GENRE_LIST:
             raise InvalidGenreError("Invalid genre")
@@ -49,8 +49,7 @@ class BooksCollection:
             self.collection[id].authors = authors
             self.collection[id].publisher = publisher
             self.collection[id].publishedDate = publishedDate
-            self.collection[id].languages = languages
-            self.collection[id].summary = summary
+            self.ratings_list[id].title = title
             return True
 
     def get_book(self, book_id):

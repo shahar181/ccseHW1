@@ -98,18 +98,34 @@ def update_book(book_id):
     data = request.get_json()
 
     # Validate input data
-    required_fields = ["title", "ISBN", "genre", "authors", "publisher", "publishedDate", "languages", "summary"]
+    required_fields = ["title", "ISBN", "genre", "authors", "publisher", "publishedDate"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing one or more required fields"}), 422
+
+        # Extract each field
+    title = data.get("title")
+    ISBN = data.get("ISBN")
+    genre = data.get("genre")
+    authors = data.get("authors")
+    publisher = data.get("publisher")
+    publishedDate = data.get("publishedDate")
+
     try:
-        updated = books.update_book(book_id, **data)
+        updated = books.update_book(
+            book_id,
+            title=title,
+            ISBN=ISBN,
+            genre=genre,
+            authors=authors,
+            publisher=publisher,
+            publishedDate=publishedDate,
+        )
         if updated:
             return jsonify({"id": book_id}), 200
     except InvalidGenreError as e:
         return jsonify({"error": str(e)}), 422
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
-
 
 # GET /ratings to retrieve all ratings
 @app.route('/ratings', methods=['GET'])
@@ -149,10 +165,9 @@ def get_top_books():
     ratings_list = [{
         'id': book_id,
         'title': rating['title'],
-        'values': rating['values'],
         'average': rating['average']
     } for book_id, rating in books.get_top_ratings()]
-    return jsonify({"top":ratings_list} ), 200
+    return jsonify(ratings_list), 200
 
 
 # POST /ratings/<book_id>/values to add a new rating value
