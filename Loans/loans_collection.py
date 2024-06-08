@@ -11,7 +11,7 @@ class loans_collection:
 
     def __init__(self):
         # Get MongoDB URI from environment variable
-        mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+        mongo_uri = os.getenv('MONGO_URI', 'mongodb://mongodb:27017/')  # Use 'mongodb' as the hostname
 
         # Connect to MongoDB
         self.client = MongoClient(mongo_uri)

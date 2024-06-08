@@ -14,7 +14,7 @@ app = Flask(__name__)
 loans = loans_collection()
 
 # Get MongoDB URI from environment variable
-mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+mongo_uri = os.getenv('MONGO_URI', 'mongodb://mongodb:27017/')  # Use 'mongodb' as the hostname
 
 # Connect to MongoDB
 client = MongoClient(mongo_uri)
