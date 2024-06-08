@@ -3,7 +3,7 @@ version: '3.8'
 services:
   mongodb:
     image: mongo:latest
-    container_name: mongodb
+    container_name: mongo
     ports:
       - "27017:27017"
     expose:
@@ -12,24 +12,24 @@ services:
       - mongo-data:/data/db
 
   books:
-    build: ./books
+    build: ./Books
     restart: always
     depends_on:
       - mongodb
     environment:
-      MONGO_URI: mongodb://mongodb:27017/
+      MONGO_URI: mongodb://mongo:27017/
     ports:
       - "5001:5001"
     expose:
       - 5001
 
   loans_1:
-    build: ./loans
+    build: ./Loans
     restart: always
     depends_on:
       - mongodb
     environment:
-      MONGO_URI: mongodb://mongodb:27017/
+      MONGO_URI: mongodb://mongo:27017/
       PORT: 5002
     ports:
       - "5002:5002"
@@ -37,12 +37,12 @@ services:
       - 5002
 
   loans_2:
-    build: ./loans
+    build: ./Loans
     restart: always
     depends_on:
       - mongodb
     environment:
-      MONGO_URI: mongodb://mongodb:27017/
+      MONGO_URI: mongodb://mongo:27017/
       PORT: 5003
     ports:
       - "5003:5003"

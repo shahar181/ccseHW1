@@ -5,7 +5,6 @@ from costumeExeptions_loans import *
 import logging
 import re
 from pymongo import MongoClient
-from bson import json_util, ObjectId
 import os
 
 logging.basicConfig(level=logging.DEBUG)
@@ -125,7 +124,7 @@ def get_all_loans():
 
 
 # GET /loans/<loanID> to retrieve a specific loan
-@app.route('loans/<loanID>', methods=['GET'])
+@app.route('/loans/<loanID>', methods=['GET'])
 def get_loan(loanID):
     try:
         loan = loans.get_loan(loanID)
