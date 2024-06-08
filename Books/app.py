@@ -41,31 +41,16 @@ def add_book():
 # GET /books to retrieve all books
 @app.route('/books', methods=['GET'])
 def get_all_books():
-    # For args without "language contains <value>" case
     query_params = request.args
-    # Set of allowed languages
-    allowed_languages = {"heb", "eng", "spa", "chi"}
     filtered_books = books.get_all_books()
 
     # If a query exists - otherwise return all books
     if query_params:
-        # Iterate over the list
         for field, value in query_params.items():
-            if field == "language":
-                # Validate the language parameter
-                if value not in allowed_languages:
-                    return jsonify({"error": "Unsupported language for query"}), 422
-                filtered_books = [book for book in filtered_books if value in book.languages] 
-                # If no books found with the specified language, but the language is allowed
-                if not filtered_books:
-                    return jsonify({"error": "No Matching book"}), 404
-
-            else:
-                # General field=value filtering
-                filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]  
+            filtered_books = [book for book in filtered_books if getattr(book, field, None) == value]
 
     # Return the filtered list of books as JSON
-    return jsonify([book.get_json() for book in filtered_books])
+    return jsonify(filtered_books)
 
 
 # GET /books/<id> to retrieve a specific book
@@ -102,7 +87,7 @@ def update_book(book_id):
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing one or more required fields"}), 422
 
-        # Extract each field
+    # Extract each field
     title = data.get("title")
     ISBN = data.get("ISBN")
     genre = data.get("genre")
@@ -111,21 +96,21 @@ def update_book(book_id):
     publishedDate = data.get("publishedDate")
 
     try:
-        updated = books.update_book(
+        books.update_book(
             book_id,
             title=title,
             ISBN=ISBN,
             genre=genre,
             authors=authors,
             publisher=publisher,
-            publishedDate=publishedDate,
+            publishedDate=publishedDate
         )
-        if updated:
-            return jsonify({"id": book_id}), 200
+        return jsonify({"id": book_id}), 200
     except InvalidGenreError as e:
         return jsonify({"error": str(e)}), 422
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
+
 
 # GET /ratings to retrieve all ratings
 @app.route('/ratings', methods=['GET'])
@@ -139,13 +124,14 @@ def get_all_ratings():
         except NotFoundError as e:
             return jsonify({"error": str(e)}), 404
     else:
-        #  list comprehension to create a list of dictionaries for JSON response
+        # Fetch all ratings
+        ratings = books.get_all_ratings()
         ratings_list = [{
-            'id': book_id,
+            'id': str(rating['book_id']),
             'title': rating['title'],
             'values': rating['values'],
             'average': rating['average']
-        } for book_id, rating in books.ratings_list.items()]
+        } for rating in ratings]
         return jsonify(ratings_list)
 
 
@@ -162,12 +148,14 @@ def get_rating(book_id):
 # GET /top to retrieve top-rated books
 @app.route('/top', methods=['GET'])
 def get_top_books():
+    top_ratings = books.get_top_ratings()
     ratings_list = [{
-        'id': book_id,
+        'id': str(rating['book_id']),
         'title': rating['title'],
         'average': rating['average']
-    } for book_id, rating in books.get_top_ratings()]
+    } for rating in top_ratings]
     return jsonify(ratings_list), 200
+
 
 
 # POST /ratings/<book_id>/values to add a new rating value
@@ -181,7 +169,6 @@ def add_book_rating(book_id):
     value = data.get('value')
     if value:
         try:
-            value = int(value)
             new_average = books.add_rating(book_id, value)
             return jsonify({"new average": new_average}), 201
         except ValueError as e:

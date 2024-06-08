@@ -1,5 +1,7 @@
 import json
 import requests
+from bson import ObjectId
+
 from costomExeptions import *
 from openai import OpenAI
 import os
@@ -11,8 +13,8 @@ client = OpenAI(
 
 
 class Book:
-    def __init__(self, title, ISBN, genre, book_id):
-        self.id = str(book_id)
+    def __init__(self, title, ISBN, genre, _id=None):
+        self.id = str(_id) if _id else str(ObjectId())
         self.title = title
         self.ISBN = ISBN
         self.genre = genre

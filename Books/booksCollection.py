@@ -1,5 +1,10 @@
+import os
+
+from pymongo import MongoClient
+
 from bookClass import Book
 from costomExeptions import *
+from bson import ObjectId
 
 
 class BooksCollection:
@@ -8,9 +13,16 @@ class BooksCollection:
                   "Science Fiction", "Fantasy", "Other"]
 
     def __init__(self):
-        self.collection = {}
-        self.ratings_list = {}
-        self.top_ratings = []
+        # Get MongoDB URI from environment variable
+        self.top_ratings = None
+        mongo_uri = os.getenv('MONGO_URI', 'mongodb://mongodb:27017/')  # Use 'mongodb' as the hostname
+
+        # Connect to MongoDB
+        self.client = MongoClient(mongo_uri)
+
+        self.db = self.client['library_db']
+        self.books_collection = self.db['books']
+        self.ratings_collection = self.db['ratings']
 
     def add_book(self, title, ISBN, genre):
         """Add a new book to the collection."""
@@ -18,94 +30,99 @@ class BooksCollection:
             raise InvalidGenreError("Invalid genre")
         elif not title or not ISBN or not genre:
             raise MissingFieldsError("Missing required fields")
-        elif [book for book in self.collection.values() if book.ISBN == ISBN]:
+        elif self.books_collection.find_one({"ISBN": ISBN}):
             raise BookAlreadyExistsError("Book already exists")
-        book_id = str(self._id_counter)
-        new_book = Book(title, ISBN, genre, book_id)
-        self._id_counter += 1  # Increment the ID counter for the next book
-        self.collection[book_id] = new_book
-        self.ratings_list[book_id] = {'values': [], 'average': 0.0, 'title': title, 'id': book_id}
-        return book_id
+        new_book = Book(title, ISBN, genre)
+        book_data = new_book.get_json()
+        result = self.books_collection.insert_one(book_data)
+        return str(result.inserted_id)
 
     def delete_book(self, book_id):
         """Delete a book from the collection."""
-        if book_id in self.collection:
-            del self.collection[book_id]
-            del self.ratings_list[book_id]
-            self.update_top_ratings()
-        else:
+        """Delete a book from the collection."""
+        result = self.books_collection.delete_one({"_id": ObjectId(book_id)})
+        if result.deleted_count == 0:
             raise NotFoundError("Book not found")
+        self.ratings_collection.delete_one({"book_id": ObjectId(book_id)})
 
     def update_book(self, id, title, ISBN, genre, authors, publisher, publishedDate):
         """Update an existing book in the collection."""
         if genre not in self.GENRE_LIST:
             raise InvalidGenreError("Invalid genre")
-        elif id not in self.collection:
+        book_data = {
+            "title": title,
+            "ISBN": ISBN,
+            "genre": genre,
+            "authors": authors,
+            "publisher": publisher,
+            "publishedDate": publishedDate
+        }
+        result = self.books_collection.update_one({"_id": ObjectId(id)}, {"$set": book_data})
+        if result.matched_count == 0:
             raise NotFoundError("Book not found")
-        else:
-            self.collection[id].title = title
-            self.collection[id].ISBN = ISBN
-            self.collection[id].genre = genre
-            self.collection[id].authors = authors
-            self.collection[id].publisher = publisher
-            self.collection[id].publishedDate = publishedDate
-            self.ratings_list[id].title = title
-            return True
 
     def get_book(self, book_id):
         """Retrieve a specific book from the collection."""
-        if book_id in self.collection:
-            return self.collection[book_id].get_json()
-        else:
+        book = self.books_collection.find_one({"_id": ObjectId(book_id)})
+        if not book:
             raise NotFoundError("Book not found")
+        return book
 
     def get_all_books(self):
         """Retrieve all books from the collection."""
         # Serialize all books into an array
-        books_list = [book for book in self.collection.values()]
-        return books_list
+        books = list(self.books_collection.find())
+        return books
 
     def get_rating(self, book_id):
         """Retrieve the rating for a specific book."""
-        if book_id in self.ratings_list:
-            return self.ratings_list[book_id]
-        raise NotFoundError("Book not found")
+        rating = self.ratings_collection.find_one({"book_id": ObjectId(book_id)})
+        if not rating:
+            raise NotFoundError("Rating not found")
+        return rating
 
     def get_all_ratings(self):
         """Retrieve all ratings from the collection."""
-        return self.ratings_list
+        ratings = list(self.ratings_collection.find())
+        return ratings
 
     def add_rating(self, book_id, value):
         """Add a new rating value for a book."""
         if value not in {1, 2, 3, 4, 5}:
             raise ValueError("Rating value must be between 1 and 5")
-        if book_id in self.ratings_list:
-            self.ratings_list[book_id]['values'].append(value)
-            self.ratings_list[book_id]['average'] = round(
-                sum(self.ratings_list[book_id]['values']) / len(self.ratings_list[book_id]['values']), 2)
-            self.update_top_ratings()
-            return self.ratings_list[book_id]['average']
-        else:
-            raise NotFoundError("Book not found")
+
+        rating = self.ratings_collection.find_one({"book_id": ObjectId(book_id)})
+        if not rating:
+            rating_data = {
+                "book_id": ObjectId(book_id),
+                "values": [value],
+                "average": value,
+                "title": self.get_book(book_id)['title']
+            }
+            self.ratings_collection.insert_one(rating_data)
+            return value
+
+        values = rating['values']
+        values.append(value)
+        new_average = round(sum(values) / len(values), 2)
+        self.ratings_collection.update_one(
+            {"book_id": ObjectId(book_id)},
+            {"$set": {"values": values, "average": new_average}}
+        )
+        return new_average
+
+
+
+
 
     def update_top_ratings(self):
-        """Update the top-rated books in the collection."""
-        # Filter out books that have less than 3 ratings
-        filtered_books = {book_id: ratings for book_id, ratings in self.ratings_list.items() if
-                          len(ratings['values']) >= 3}
-
-        # If no books have 3 or more ratings, consider all books
-        if not filtered_books:
-            filtered_books = self.ratings_list
-
-        # Sort the books by average rating in descending order
-        sorted_books = sorted(filtered_books.items(), key=lambda x: x[1]['average'], reverse=True)
-
-        # Get the top 3 average ratings
-        top_3_ratings = sorted(set([book[1]['average'] for book in sorted_books]), reverse=True)[:3]
-
-        # Get all books that have an average rating in the top 3
-        self.top_ratings = [book for book in sorted_books if book[1]['average'] in top_3_ratings]
+        # Fetch all books with ratings
+        ratings = list(self.ratings_collection.find())
+        # Sort by average rating
+        ratings.sort(key=lambda x: x['average'], reverse=True)
+        # Get top 3 average ratings (or fewer if there are less than 3)
+        top_3_ratings = ratings[:3]
+        self.top_ratings = top_3_ratings
 
     # Function to retrieve the top-rated books
     def get_top_ratings(self):
