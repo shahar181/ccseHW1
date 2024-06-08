@@ -17,9 +17,7 @@ services:
     environment:
       MONGO_URI: mongodb://mongodb:27017/
     ports:
-      - "8000:5001"
-    expose:
-      - 5001
+      - "5001:5001"
 
   loans:
     build: ./loans
@@ -29,9 +27,19 @@ services:
     environment:
       MONGO_URI: mongodb://mongodb:27017/
     ports:
-      - "8000:5002"
-    expose:
-      - 5002
+      - "5002:5002"
+      - "5003:5003"  # Add port for second instance
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro  # Mount custom nginx configuration file
+    depends_on:
+      - books
+      - loans
 
 volumes:
   mongo-data:
