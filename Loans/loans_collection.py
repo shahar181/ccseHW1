@@ -16,11 +16,11 @@ class loans_collection:
         # Connect to MongoDB
         self.client = MongoClient(mongo_uri)
 
-        # Accessing the loans and books databases
-        loans_db = self.client['loans_db']
+        # Accessing the database
+        self.db = self.client['library_db']
 
         # Access collections
-        self.loans_collection_db = loans_db['loans']
+        self.loansCollection = self.db['loans']
 
         self.collection = {}
 
@@ -31,7 +31,7 @@ class loans_collection:
             raise MissingFieldsError("Missing required fields")
 
         new_loan = Loan(book_id, title, memberName, ISBN, loanDate)
-        result = self.loans_collection_db.insert_one(new_loan.get_json())
+        result = self.loansCollection.insert_one(new_loan.get_json())
         loanID = str(result.inserted_id)
         self.collection[loanID] = new_loan
 
@@ -39,7 +39,7 @@ class loans_collection:
 
     def delete_loan(self, loanID):
         """Delete a loan from the collection."""
-        result = self.loans_collection_db.delete_one({"_id":ObjectId(loanID)})
+        result = self.loansCollection.delete_one({"_id":ObjectId(loanID)})
         if result.deleted_count == 1:
             return loanID
         else:
@@ -67,7 +67,7 @@ class loans_collection:
     def get_all_loans(self):
         """Retrieve all loans from the collection."""
         # Serialize all loans into a list of jsons
-        loans_list = list(self.loans_collection_db.find())
+        loans_list = list(self.loansCollection.find())
 
         # Convert the _id field from ObjectId to string for each document
         for loan in loans_list:

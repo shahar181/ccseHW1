@@ -19,11 +19,11 @@ mongo_uri = os.getenv('MONGO_URI', 'mongodb://mongodb:27017/')  # Use 'mongodb' 
 # Connect to MongoDB
 client = MongoClient(mongo_uri)
 
-# Accessing the loans and books databases
-loans_db = client['loans_db']
+# Accessing the database
+db = client['library_db']
 
 # Access collections
-loans_collection_db = loans_db['loans']
+loansCollection = db['loans']
 
 # Function to get book details from the books API
 def get_book_details(isbn):
@@ -55,7 +55,7 @@ def add_loan():
         return jsonify({"error": "Missing required fields in the json request"}), 422
 
     # Check if the book is allready loaned
-    if loans_collection_db.find_one({"ISBN": isbn}) is not None:
+    if loansCollection.find_one({"ISBN": isbn}) is not None:
         return jsonify({"error": "Book is allready loaned"}), 422
     
     # Checking loans per member limit
