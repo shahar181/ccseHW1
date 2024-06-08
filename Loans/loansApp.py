@@ -139,6 +139,8 @@ def delete_loan(loanID):
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
 
+# Get the port number from the environment variable, default to 5002
+port = int(os.getenv('PORT', 5002))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True)
