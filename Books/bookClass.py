@@ -12,15 +12,13 @@ client = OpenAI(
 
 class Book:
     def __init__(self, title, ISBN, genre, book_id):
-        self.id = book_id
+        self.id = str(book_id)
         self.title = title
         self.ISBN = ISBN
         self.genre = genre
         self.authors = "missing"
         self.publisher = "missing"
         self.publishedDate = "missing"
-        self.languages = []
-        self.summary = "missing"
 
         self.fetch_details_from_apis()
 
@@ -29,9 +27,9 @@ class Book:
         # Fetch details from Google Books API
         self.fetch_google_books()
         # Fetch languages from Open Library
-        self.languages = self.fetch_book_languages()
+        #self.languages = self.fetch_book_languages()
         # Fetch summary using ChatGPT
-        self.fetch_summary()
+        #self.fetch_summary()
 
     # Function to fetch book details from Google Books API
     def fetch_google_books(self):
