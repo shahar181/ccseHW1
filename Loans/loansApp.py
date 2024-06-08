@@ -42,13 +42,18 @@ def add_loan():
     isbn = data.get('ISBN')
     loanDate = data.get('loanDate')
 
+    # Check for missing fields in the given JSON
     if (memberName is None) or (isbn is None) or (loanDate is None):
-        raise MissingFieldsError("Missing required fields")
+        return jsonify({"error": "Missing required fields in the json request"}), 422
 
+    # Check if the book is allready loaned
+    if loans_collection_db.find_one({"ISBN": isbn}) is not None:
+        return jsonify({"error": "Book is allready loaned"}), 422
+    
     # Checking loans per member limit
     member_loans = 0
     for loan in loans.get_all_loans:
-        if loan.get_json["memberName"] == memberName:
+        if loan["memberName"] == memberName:
             member_loans += 1
         if member_loans == 2:
            return jsonify({"error": "This member has more than two books"}), 422 
@@ -61,15 +66,12 @@ def add_loan():
     
     # Check if book exist in /books
     try:
-        # # TODO: verify the internal port in books
-        # books_service_url = f'http://books:5000/books?isbn={isbn}'
-        # response = requests.get(books_service_url)
-
         # Query the collection for the document with the specified ISBN
         book_document = books_collection_db.find_one({"ISBN": isbn})
 
+        # Books does not exist in /books
         if book_document is None:
-            raise BookNotInBooksError("Books is not in /books")
+            return jsonify({"error": "Book does not exist in /books"}), 422
         
         # Retrieving bookid and title from books API
         book_id = str(book_document['_id'])
