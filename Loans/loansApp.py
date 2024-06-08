@@ -21,11 +21,19 @@ client = MongoClient(mongo_uri)
 
 # Accessing the loans and books databases
 loans_db = client['loans_db']
-books_db = client['books_db']
 
 # Access collections
 loans_collection_db = loans_db['loans']
-books_collection_db = books_db['books']
+
+# Function to get book details from the books API
+def get_book_details(isbn):
+    books_api_url = f"http://books:5001/books?ISBN={isbn}"
+    response = requests.get(books_api_url)
+    if response.status_code == 200:
+        books = response.json()
+        if books:
+            return books[0]  # Assuming the API returns a list of books
+    return None
 
 # POST /loans to create a new book loan
 @app.route('/loans', methods=['POST'])
@@ -67,15 +75,15 @@ def add_loan():
     # Check if book exist in /books
     try:
         # Query the collection for the document with the specified ISBN
-        book_document = books_collection_db.find_one({"ISBN": isbn})
+        book_details = get_book_details(isbn)
 
         # Books does not exist in /books
-        if book_document is None:
+        if book_details is None:
             return jsonify({"error": "Book does not exist in /books"}), 422
         
         # Retrieving bookid and title from books API
-        book_id = str(book_document['_id'])
-        title = book_document["title"]
+        book_id = book_details['id']
+        title = book_details["title"]
 
     except Exception as e:
         # Handle connection errors or timeout errors
