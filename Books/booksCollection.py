@@ -1,10 +1,12 @@
 import os
 
+from bson.errors import InvalidId
 from pymongo import MongoClient
 
 from bookClass import Book
 from costomExeptions import *
 from bson import ObjectId
+import logging
 
 
 class BooksCollection:
@@ -39,14 +41,23 @@ class BooksCollection:
 
     def delete_book(self, book_id):
         """Delete a book from the collection."""
-        """Delete a book from the collection."""
-        result = self.books_collection.delete_one({"_id": ObjectId(book_id)})
+        try:
+            object_id = ObjectId(book_id)
+        except InvalidId:
+            raise NotFoundError("Invalid book ID")  # or raise a more specific error if you prefer
+
+        result = self.books_collection.delete_one({"_id": object_id})
         if result.deleted_count == 0:
             raise NotFoundError("Book not found")
-        self.ratings_collection.delete_one({"book_id": ObjectId(book_id)})
+        self.ratings_collection.delete_one({"book_id": object_id})
 
     def update_book(self, id, title, ISBN, genre, authors, publisher, publishedDate):
         """Update an existing book in the collection."""
+        try:
+            object_id = ObjectId(id)  # Convert the string id to ObjectId
+        except Exception as e:
+            raise InvalidGenreError(f"Invalid ID format: {id} - {str(e)}")
+
         if genre not in self.GENRE_LIST:
             raise InvalidGenreError("Invalid genre")
         book_data = {
@@ -57,8 +68,12 @@ class BooksCollection:
             "publisher": publisher,
             "publishedDate": publishedDate
         }
-        result = self.books_collection.update_one({"_id": ObjectId(id)}, {"$set": book_data})
+        # Perform the update
+        result = self.books_collection.update_one({"_id": object_id}, {"$set": book_data})
+        # Check if the book was found and updated
         if result.matched_count == 0:
+            print(object_id)
+            logging.error(f"Book not found with ID: {object_id}")
             raise NotFoundError("Book not found")
 
     def get_book(self, book_id):
@@ -95,6 +110,10 @@ class BooksCollection:
         """Add a new rating value for a book."""
         if value not in {1, 2, 3, 4, 5}:
             raise ValueError("Rating value must be between 1 and 5")
+        try:
+            object_id = ObjectId(book_id)
+        except InvalidId:
+            raise NotFoundError("Invalid book ID")
 
         rating = self.ratings_collection.find_one({"book_id": ObjectId(book_id)})
         if not rating:
