@@ -22,12 +22,15 @@ add_loan() {
     echo $RESPONSE
 }
 
+# Real ISBNs for books
+ISBNs=("9783161484100" "9781234567897" "9781111111111" "9782222222222" "9783333333333")
+
 # Librarian: Add a few books to be used in loans
 echo "Adding books to be used for loans..."
 BOOK_IDS=()
 for i in {1..5}; do
     TITLE="Loan Book $(generate_random_string)"
-    ISBN=$(generate_random_string 13)
+    ISBN=${ISBNs[$i-1]}
     GENRE="Fantasy"
 
     RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
@@ -40,14 +43,14 @@ for i in {1..5}; do
     BOOK_IDS+=($BOOK_ID)
     echo "Added book for loan $i: $RESPONSE"
 done
-echo -e "\n"
+echo ""
 
 # Member: Add a few loans
 echo "Member: Adding multiple loans..."
 LOAN_IDS=()
 for i in {1..5}; do
     MEMBER_NAME="Member $(generate_random_string)"
-    ISBN=$(curl -s -X GET $BOOKS_URL | jq -r --arg index $i '.[$index | tonumber - 1].ISBN')
+    ISBN=${ISBNs[$i-1]}
     LOAN_DATE="2024-01-01"
 
     RESPONSE=$(add_loan "$MEMBER_NAME" "$ISBN" "$LOAN_DATE")
@@ -55,28 +58,29 @@ for i in {1..5}; do
     LOAN_IDS+=($LOAN_ID)
     echo "Added loan $i: $RESPONSE"
 done
-echo -e "\n"
+echo ""
 
 # Kill the loans_1 container
 echo "Killing the loans_1 container..."
-docker stop loans_1
+docker exec -it loans_1 /bin/sh -c "kill 1"
 sleep 5  # Wait for the container to be stopped
-docker start loans_1
 echo "Restarted the loans_1 container."
-echo -e "\n"
+echo ""
 
 # Give some time for the container to fully restart
 sleep 10
 
 # Member: Verify all loans to ensure load balancing and recovery
 echo "Member: Fetching all loans..."
-curl -s -X GET $LOANS_URL | jq .
-echo -e "\n"
+ALL_LOANS_RESPONSE=$(curl -s -X GET $LOANS_URL)
+echo $ALL_LOANS_RESPONSE | jq .
+echo ""
 
 # Member: Get loans with a specific query
 echo "Member: Fetching loans with a specific query..."
-curl -s -X GET "$LOANS_URL?memberName=${MEMBER_NAME}" | jq .
-echo -e "\n"
+QUERY_RESPONSE=$(curl -s -X GET "$LOANS_URL?memberName=${MEMBER_NAME}")
+echo $QUERY_RESPONSE | jq .
+echo ""
 
 # Member: Delete a specific loan
 echo "Member: Deleting a specific loan..."
@@ -84,16 +88,18 @@ DELETE_LOAN_ID=${LOAN_IDS[1]}
 
 RESPONSE=$(curl -s -X DELETE "$LOANS_URL/$DELETE_LOAN_ID")
 echo "Deleted loan $DELETE_LOAN_ID: $RESPONSE"
-echo -e "\n"
+echo ""
 
 # Member: Try to get the deleted loan
 echo "Member: Trying to fetch the deleted loan..."
-curl -s -X GET "$LOANS_URL/$DELETE_LOAN_ID" | jq .
-echo -e "\n"
+DELETED_LOAN_RESPONSE=$(curl -s -X GET "$LOANS_URL/$DELETE_LOAN_ID")
+echo $DELETED_LOAN_RESPONSE | jq .
+echo ""
 
 # Member: Final check to get all loans
 echo "Member: Final check: fetching all loans..."
-curl -s -X GET $LOANS_URL | jq .
-echo -e "\n"
+FINAL_LOANS_RESPONSE=$(curl -s -X GET $LOANS_URL)
+echo $FINAL_LOANS_RESPONSE | jq .
+echo ""
 
 echo "Testing completed."

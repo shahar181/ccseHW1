@@ -12,6 +12,7 @@ services:
   books:
     build: ./Books
     restart: always
+    container_name: books
     depends_on:
       - mongodb
     environment:
@@ -24,6 +25,7 @@ services:
   loans_1:
     build: ./Loans
     restart: always
+    container_name: loans_1
     depends_on:
       - mongodb
     environment:
@@ -37,6 +39,7 @@ services:
   loans_2:
     build: ./Loans
     restart: always
+    container_name: loans_2
     depends_on:
       - mongodb
     environment:
@@ -50,6 +53,7 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: always
     depends_on:
       - books
       - loans_1

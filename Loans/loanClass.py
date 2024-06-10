@@ -10,15 +10,13 @@ class Loan:
         self.ISBN = ISBN
         self.memberName = memberName
         self.loanDate = loanDate
-    
+        self.loan_id = None
     def get_json(self):
         """Return the book data formatted as a JSON-compatible dictionary."""
         return {
-            'bookID': self.book_id,
-            'title': self.title,
-            'ISBN': self.ISBN,
             'memberName': self.memberName,
-            'authors': self.authors,
+            'ISBN': self.ISBN,
+            'title': self.title,
+            'bookID': self.book_id,
             'loanDate': self.loanDate,
-
         }

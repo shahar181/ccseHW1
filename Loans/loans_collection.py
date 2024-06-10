@@ -33,12 +33,18 @@ class loans_collection:
         new_loan = Loan(book_id, title, memberName, ISBN, loanDate)
         result = self.loansCollection.insert_one(new_loan.get_json())
         loanID = str(result.inserted_id)
+        new_loan.loan_id = loanID
         self.collection[loanID] = new_loan
 
         return loanID
 
     def delete_loan(self, loanID):
         """Delete a loan from the collection."""
+        try:
+            loan_object_id = ObjectId(loanID)
+        except Exception as e:
+            raise InvalidLoanIdException(f"Invalid loan ID format: {loanID} - {str(e)}")
+
         result = self.loansCollection.delete_one({"_id":ObjectId(loanID)})
         if result.deleted_count == 1:
             return loanID
@@ -53,14 +59,16 @@ class loans_collection:
             loan_object_id = ObjectId(loanID)
         except Exception as e:
             raise InvalidLoanIdException("Invalid loan ID format")
-        
+
         # Retrieve the loan document
-        loan_document = loans_collection.find_one({"_id": loan_object_id})
-        
+        loan_document = self.loansCollection.find_one({"_id": loan_object_id})
+
         if loan_document:
-            # Convert the _id to a string
-            loan_document['_id'] = str(loan_document['_id'])
-            return json.dumps(loan_document)
+            if isinstance(loan_document, dict):
+                # Convert the _id to a string
+                loan_document['loanID'] = str(loan_document['_id'])
+                del loan_document['_id']  # Remove the original _id field
+                return loan_document
         else:
             raise NotFoundError("Loan not found")
 
@@ -71,8 +79,9 @@ class loans_collection:
 
         # Convert the _id field from ObjectId to string for each document
         for loan in loans_list:
-            loan['_id'] = str(loan['_id'])        
+            loan['loanID'] = str(loan['_id'])
+            del loan['_id']
 
-        return json_util.dumps(loans_list)
+        return loans_list
 
 

@@ -55,11 +55,11 @@ def add_loan():
 
     # Check if the book is allready loaned
     if loansCollection.find_one({"ISBN": isbn}) is not None:
-        return jsonify({"error": "Book is allready loaned"}), 422
+        return jsonify({"error": "Book is already loaned"}), 422
     
     # Checking loans per member limit
     member_loans = 0
-    for loan in loans.get_all_loans:
+    for loan in loans.get_all_loans():
         if loan["memberName"] == memberName:
             member_loans += 1
         if member_loans == 2:
@@ -110,7 +110,7 @@ def add_loan():
 @app.route('/loans', methods=['GET'])
 def get_all_loans():
     query_params = request.args
-    # Getting all the the loans as a list of jsons
+    # Getting all the  loans as a list of jsons
     filtered_loans = loans.get_all_loans()
 
     # If a query exists - otherwise return all loans
@@ -120,7 +120,7 @@ def get_all_loans():
             filtered_loans = [loan for loan in filtered_loans if getattr(loan, field, None) == value]
 
     # Return the filtered list of loans as JSON
-    return filtered_loans
+    return jsonify(filtered_loans)
 
 
 # GET /loans/<loanID> to retrieve a specific loan
@@ -144,6 +144,8 @@ def delete_loan(loanID):
         loans.delete_loan(loanID)
         return jsonify({"id": loanID}), 200
     except NotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except InvalidLoanIdException as e:
         return jsonify({"error": str(e)}), 404
 
 # Get the port number from the environment variable, default to 5002
