@@ -81,6 +81,9 @@ class BooksCollection:
         book = self.books_collection.find_one({"_id": ObjectId(book_id)})
         if not book:
             raise NotFoundError("Book not found")
+        book = dict(book)
+        book["id"] = str(book["_id"])
+        del book["_id"]
         return book
 
     def get_all_books(self):

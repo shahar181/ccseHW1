@@ -27,7 +27,7 @@ def add_book():
     genre = data.get('genre')
     try:
         book_id = books.add_book(title, isbn, genre)
-        return jsonify({"id": book_id}), 201
+        return book_id, 201
     except InvalidGenreError as e:
         return jsonify({"error": str(e)}), 422
     except MissingFieldsError as e:
@@ -70,7 +70,7 @@ def get_book(book_id):
 def delete_book(book_id):
     try:
         books.delete_book(book_id)
-        return jsonify({"id": book_id}), 200
+        return book_id, 200
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
 
@@ -107,7 +107,7 @@ def update_book(book_id):
             publisher=publisher,
             publishedDate=publishedDate
         )
-        return jsonify({"id": book_id}), 200
+        return book_id, 200
     except InvalidGenreError as e:
         return jsonify({"error": str(e)}), 422
     except NotFoundError as e:

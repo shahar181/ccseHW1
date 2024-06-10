@@ -24,6 +24,7 @@ db = client['library_db']
 # Access collections
 loansCollection = db['loans']
 
+
 # Function to get book details from the books API
 def get_book_details(isbn):
     books_api_url = f"http://books:5001/books?ISBN={isbn}"
@@ -33,6 +34,7 @@ def get_book_details(isbn):
         if books:
             return books[0]  # Assuming the API returns a list of books
     return None
+
 
 # POST /loans to create a new book loan
 @app.route('/loans', methods=['POST'])
@@ -56,21 +58,21 @@ def add_loan():
     # Check if the book is allready loaned
     if loansCollection.find_one({"ISBN": isbn}) is not None:
         return jsonify({"error": "Book is already loaned"}), 422
-    
+
     # Checking loans per member limit
     member_loans = 0
     for loan in loans.get_all_loans():
         if loan["memberName"] == memberName:
             member_loans += 1
         if member_loans == 2:
-           return jsonify({"error": "This member has more than two books"}), 422 
-    
-    # Check if date is formatted correctly
+            return jsonify({"error": "This member has more than two books"}), 422
+
+            # Check if date is formatted correctly
     # Define the regex pattern for the 'YYYY-MM-DD' format
     date_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}$')
     if not date_pattern.match(loanDate):
         return jsonify({"error": "Date not in format"}), 422
-    
+
     # Check if book exist in /books
     try:
         # Query the collection for the document with the specified ISBN
@@ -79,7 +81,7 @@ def add_loan():
         # Books does not exist in /books
         if book_details is None:
             return jsonify({"error": "Book does not exist in /books"}), 422
-        
+
         # Retrieving bookid and title from books API
         book_id = book_details['id']
         title = book_details["title"]
@@ -88,20 +90,19 @@ def add_loan():
         # Handle connection errors or timeout errors
         raise APIServiceError(f"Unable to connect to /books collection - {str(e)}")
 
-
     try:
         loanID = loans.add_loan(book_id, title, memberName, isbn, loanDate)
-        return jsonify({"loanID": loanID}), 201
-    
+        return loanID, 201
+
     except BookNotInBooksError as e:
         return jsonify({"error": str(e)}), 422
-    
+
     except MissingFieldsError as e:
         return jsonify({"error": str(e)}), 422
-    
+
     except APIServiceError as e:
         return jsonify({"error": str(e)}), 500
-    
+
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -129,7 +130,7 @@ def get_loan(loanID):
     try:
         loan = loans.get_loan(loanID)
         return jsonify(loan), 200
-    
+
     except InvalidLoanIdException as e:
         return jsonify({"error": str(e)}), 400
 
@@ -142,11 +143,12 @@ def get_loan(loanID):
 def delete_loan(loanID):
     try:
         loans.delete_loan(loanID)
-        return jsonify({"id": loanID}), 200
+        return loanID, 200
     except NotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except InvalidLoanIdException as e:
         return jsonify({"error": str(e)}), 404
+
 
 # Get the port number from the environment variable, default to 5002
 port = int(os.getenv('PORT', 5002))
