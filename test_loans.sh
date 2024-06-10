@@ -57,12 +57,12 @@ for i in {1..5}; do
 done
 echo -e "\n"
 
-# Kill the loans_1 container
-echo "Killing the loans_1 container..."
-docker stop loans_1
+# Kill the ccsehw1-loans_1-1 container
+echo "Killing the ccsehw1-loans_1-1 container..."
+docker stop ccsehw1-loans_1-1
 sleep 5  # Wait for the container to be stopped
-docker start loans_1
-echo "Restarted the loans_1 container."
+docker start ccsehw1-loans_1-1
+echo "Restarted the ccsehw1-loans_1-1 container."
 echo -e "\n"
 
 # Give some time for the container to fully restart
