@@ -92,7 +92,7 @@ def add_loan():
 
     try:
         loanID = loans.add_loan(book_id, title, memberName, isbn, loanDate)
-        return loanID, 201
+        return jsonify({"Success": "Resource created successfully"}), 201
 
     except BookNotInBooksError as e:
         return jsonify({"error": str(e)}), 422

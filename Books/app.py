@@ -27,7 +27,7 @@ def add_book():
     genre = data.get('genre')
     try:
         book_id = books.add_book(title, isbn, genre)
-        return book_id, 201
+        return jsonify({"Success": "Resource created successfully"}), 201
     except InvalidGenreError as e:
         return jsonify({"error": str(e)}), 422
     except MissingFieldsError as e:
